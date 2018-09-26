@@ -153,8 +153,6 @@ public class Index {
 		/* BSBI indexing algorithm */
 		File[] dirlist = rootdir.listFiles();
 		PostingList post;
-		wordIdCounter = 1;
-		boolean isExist = false;
 
 		/* For each block */
 		for (File block : dirlist) {
@@ -166,7 +164,7 @@ public class Index {
 			File[] filelist = blockDir.listFiles();
 			
 			//create new posList after changing block
-			List<PostingList> postList = new ArrayList<PostingList>();
+			Map<Integer,PostingList> blockPost = new TreeMap<Integer,PostingList>();
 			
 			/* For each file */
 			for (File file : filelist) {
@@ -188,46 +186,35 @@ public class Index {
 						 *       For each term, build up a list of
 						 *       documents in which the term occurs
 						 */
-						List<Integer> eachPost = new ArrayList<Integer>();
+						ArrayList<Integer> eachPost = new ArrayList<Integer>();
 						if(termDict.isEmpty())
 						{
+							wordIdCounter++;
 							termDict.put(token,wordIdCounter);
 							eachPost.add(docId);
 							post = new PostingList(wordIdCounter,eachPost);
-							postList.add(post);
-							wordIdCounter++;
+							blockPost.put(wordIdCounter, post);
 						}
 						else
 						{
 							if(!termDict.containsKey(token))
 							{
-								termDict.put(token, wordIdCounter);
 								wordIdCounter++;
+								termDict.put(token, wordIdCounter);
 							}
 							int tid = termDict.get(token);
-							int index = 0;
-							for(int a = 0 ; a < postList.size() ; a++)
+							if(blockPost.containsKey(tid))
 							{
-								if(postList.get(a).getTermId()==tid)
+								if(!blockPost.get(tid).getList().contains(docId))
 								{
-									index = a;
-									isExist = true;
-									break;
+									blockPost.get(tid).getList().add(docId);
 								}
-							}
-							if(isExist == true)
-							{
-								if(!postList.get(index).getList().contains(docId))
-								{
-									postList.get(index).getList().add(docId);
-								}
-								isExist = false;
 							}
 							else
 							{
 								eachPost.add(docId);
 								post = new PostingList(tid,eachPost);
-								postList.add(post);
+								blockPost.put(tid, post);
 							}
 						}
 					}
@@ -248,20 +235,10 @@ public class Index {
 			 *       Write all posting lists for all terms to file (bfc) 
 			 */
 			// sort
-			for(int i = 1 ; i < postList.size() ; i++)
-			{
-				for(int j = i ; j > 0; j--)
-				{
-					if(postList.get(j).getTermId() < postList.get(j-1).getTermId())
-					{
-						Collections.swap(postList, j, j-1);
-					}
-				}
+			for (Integer termId : blockPost.keySet()) {
+				writePosting(inChannel, blockPost.get(termId));
 			}
-			for(int g = 0 ; g < postList.size() ; g++)
-			{
-				writePosting(inChannel, postList.get(g));
-			}
+			
 			bfc.close();
 		}
 
@@ -489,8 +466,6 @@ public class Index {
             	}
             }
         }
-        
-        //System.out.println(newDocList.toString());
     	termID = p1.getTermId();
         PostingList newPostList = new PostingList(termID,newDocList);
         return newPostList;

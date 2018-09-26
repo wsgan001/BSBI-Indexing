@@ -179,7 +179,6 @@ public class Query {
 					PostingList p = readPosting(g,termDict.get(term));
 					for(int i = 0 ; i < p.getList().size() ; i++)
 					{
-						
 						listDocID.add(p.getList().get(i));
 						check = 1;
 					}
@@ -214,38 +213,21 @@ public class Query {
 		 * no results found
 		 * 
          * */
-    	String result = "";
     	if(res != null) 
     	{
-        	String[] output = new String[res.size()];
+    		StringBuilder out = new StringBuilder();
     		for(int i = 0 ; i < res.size() ; i++)
     		{
 				if(i == res.size()-1)
 				{
-					output[i] = docDict.get(res.get(i));
+					out.append(docDict.get(res.get(i)));
 				}
 				else
 				{
-					output[i] = docDict.get(res.get(i))+"\n";
+					out.append(docDict.get(res.get(i))+"\n");
 				}
     		}
-        	for(int i = 0 ; i<output.length-1 ; i++)
-        	{
-        		for(int j = 0 ; j< output.length-i-1 ; j++)
-        		{
-        			if(output[j].compareTo(output[j+1]) > 0)
-        			{
-        				String temp = output[j];
-        				output[j] = output[j+1];
-        				output[j+1] = temp;
-        			}
-        		}
-        	}
-        	for(int i = 0 ; i < output.length ; i++)
-        	{
-        		result += output[i];
-        	}
-        	return result;
+        	return out.toString();
     	}
     	else
     	{
@@ -285,9 +267,6 @@ public class Query {
 	   				i++;
 	   			}
 	    	}
-	    	
-	    	
-			
     	}
     	newP = new PostingList(p1.getTermId(),docList);
     	return newP;
