@@ -13,8 +13,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-
-
 public class BasicIndex implements BaseIndex {
 
 	@Override
@@ -25,7 +23,9 @@ public class BasicIndex implements BaseIndex {
 		 */
 		ByteBuffer buf;
 		int termID, docFreq, docID;
-		List<Integer> eachPostList = new ArrayList<Integer>();;
+		List<Integer> eachPostList = new ArrayList<Integer>();
+		
+		//reading file to get termID for creating PostingList
 		buf = ByteBuffer.allocate(4);		// Integer are 32 bits and Byte are 8 bits so 32/8 = 4
 		try {
 			if(fc.read(buf) <= 0)
@@ -38,6 +38,7 @@ public class BasicIndex implements BaseIndex {
 		buf.flip();
 		termID = buf.getInt();
 		
+		//reading file to get dicFreq for creating PostingList
 		buf = ByteBuffer.allocate(4);
 		try {
 			fc.read(buf);
@@ -47,6 +48,7 @@ public class BasicIndex implements BaseIndex {
 		buf.flip();
 		docFreq = buf.getInt();
 		
+		//looping for keeping all docID that contains the term for storing in PostingList
 		for(int i = 0 ; i < docFreq ; i++)
 		{
 			buf = ByteBuffer.allocate(4);

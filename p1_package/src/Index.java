@@ -15,18 +15,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -69,6 +60,7 @@ public class Index {
 		 * TODO: Your code here
 		 * 
 		 */
+		// call writePosting via "index" to write PostingList (termId, docFreq, list of docId) into index file.
 		index.writePosting(fc, posting);
 		 
 	}
@@ -128,6 +120,9 @@ public class Index {
 		/*	TODO: delete all the files/sub folder under outdir
 		 * 
 		 */
+		//check whether the file is a directory or not, if yes
+		//then, if the directory contains files or sub-directory, use the method "deleteSub"
+		//the method "deleteSub" is created to delete all files and sub-directory that contain in the file
 		if(outdir.isDirectory())
 		{
 			if(outdir.list().length>0)
@@ -163,7 +158,7 @@ public class Index {
 			File blockDir = new File(dataDirname, block.getName());
 			File[] filelist = blockDir.listFiles();
 			
-			//create new posList after changing block
+			//create new TreeMap after changing block
 			Map<Integer,PostingList> blockPost = new TreeMap<Integer,PostingList>();
 			
 			/* For each file */
@@ -186,7 +181,10 @@ public class Index {
 						 *       For each term, build up a list of
 						 *       documents in which the term occurs
 						 */
+						//"eachPost" List is to keep the docID of each token
 						ArrayList<Integer> eachPost = new ArrayList<Integer>();
+						//check whether the first term is stored in termDict or not, if yes
+						//then, store the token and its docID to "eachPos" List with creating its postinglist
 						if(termDict.isEmpty())
 						{
 							wordIdCounter++;
@@ -195,8 +193,10 @@ public class Index {
 							post = new PostingList(wordIdCounter,eachPost);
 							blockPost.put(wordIdCounter, post);
 						}
+						//if the new token isn't the first term, then check whether it contains in termDict or not
 						else
 						{
+							//if the new token doesn't contain in termDict, add it into termDict, else do nothing
 							if(!termDict.containsKey(token))
 							{
 								wordIdCounter++;
@@ -234,7 +234,7 @@ public class Index {
 			 * TODO: Your code here
 			 *       Write all posting lists for all terms to file (bfc) 
 			 */
-			// sort
+			//write all posting lists into a file for block by block
 			for (Integer termId : blockPost.keySet()) {
 				writePosting(inChannel, blockPost.get(termId));
 			}
@@ -272,6 +272,7 @@ public class Index {
 			 */
 			System.out.println("Merge Block ("+b1.getName() + ", " + b2.getName() + ")");
 			
+			//method "mergeBlock" is to merge the file 'bf1'(as first block) and 'bf2'(as second block) and write the result into 'mf'
 			mergeBlock( bf1,  bf2,  mf);
 			
 			bf1.close();
@@ -319,9 +320,10 @@ public class Index {
 	private static void deleteSub(File file) throws IOException
 	{
 		System.out.println("Delete all files and sub-folders in " + file.getName());
+		//looping for checking each file in the file list whether it is directory or not
+		//if yes, use the method "deleteSub" to delete all files and sub-folders that contain in each file
 		for (File sub : file.listFiles()) 
-		{
-			 
+		{	 
 			if (sub.isDirectory()) 
 			{
 				deleteSub(sub);
@@ -346,7 +348,7 @@ public class Index {
 	}
 	
 	/**
-	 * 
+	 * the method "mergeBlock" is to merge 2 PostingList(converted from RandomAccessFile) and write in the new file
 	 * @param f1
 	 * @param f2
 	 * @param combFile
@@ -357,12 +359,13 @@ public class Index {
 		FileChannel block1 = f1.getChannel();
 		FileChannel block2 = f2.getChannel();
 		FileChannel combBlock = combFile.getChannel();
-		
+		//looping until PostingList post1 and post2 are empty, and for writting all PostingList into corpus.index file
 		while(true)
 		{
 			PostingList post1 = index.readPosting(block1);
 			PostingList post2 = index.readPosting(block2);
         	PostingList newPost = null;
+        	//looping for writting PostingList post1 into a file and index.corpus if post1 ID is lower than post2 ID
 			if(post1 == null && post2 == null)
 			{
 				break;
@@ -385,6 +388,7 @@ public class Index {
 						break;
 					}
                 } 
+				//looping for writting PostingList post2 into a file and index.corpus if post2 ID is lower than post1 ID
                 while (post2 != null) 
                 {
                 	if(post1 == null || post2.getTermId() < post1.getTermId())
@@ -401,6 +405,7 @@ public class Index {
                 		break;
                 	}
                 }
+                //if they have the same termId, merge posting
                 if (post1 != null && post2 != null && post1.getTermId() == post2.getTermId()) 
                 {
                     newPost = mergePosting(post1, post2);
@@ -415,7 +420,7 @@ public class Index {
 	}
 	
     /**
-     * 
+     * //the method "writePosDict" is to convert data(termId, pos, docFreq) into PostingList
      * @param termId
      * @param pos
      * @param docFreq
@@ -427,6 +432,7 @@ public class Index {
 		postingDict.put(termId,pairDoc);
     }
 	
+   //the method "mergePosting" is created for merge 2 PostingLists.
     private static PostingList mergePosting(PostingList p1, PostingList p2) 
     {
         int termID;
@@ -436,19 +442,23 @@ public class Index {
         Integer docID1 = popNextOrNull(docList1);
         Integer docID2 = popNextOrNull(docList2);
         
+       //looping until both docIDs is empty
         while (docID1 != null || docID2 != null) 
         {
+        	// if docID of post1 less than docID of post 2, add docID of post1 into list.
             if (docID1 <= docID2)
             {
             	newDocList.add(docID1);
             	docID1 = popNextOrNull(docList1);
             }
+            // else docID of post2 less than docID of post 11, add docID of post2 into list.
             else
             {
             	newDocList.add(docID2);
             	docID2 = popNextOrNull(docList2);
             }
             
+            // if one is null, then can add another to list immediately
             if(docID1 == null)
             {
             	while(docID2 != null)

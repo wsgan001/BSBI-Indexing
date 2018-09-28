@@ -15,11 +15,10 @@ import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Query {
 
@@ -50,6 +49,8 @@ public class Query {
 		 * TODO: Your code here
 		 */
 		PostingList posList;
+		//check whether the parameter 'termId' exists in the list "posDict", which stores term id or not,
+		//if 'termId' contains in "posDict", then return its posting list by using position in index file to seek.
 		if(posDict.containsKey(termId))
 		{
 			posList = index.readPosting(fc.position(posDict.get(termId)));
@@ -132,30 +133,41 @@ public class Query {
 		 */
 		FileChannel g;
 		g = indexFile.getChannel();
-		List<PostingList> pos = new ArrayList<PostingList>();
-		List<Integer> listDocID = new LinkedList<Integer>();
+		
+		//pos List is to keep postinglist of the queries that contains in the term
+		List<PostingList> pos = new ArrayList<>();
+		
+		//listDocID TreeSet is to keep the docId of the queries that contains in term
+		TreeSet<Integer> listDocID = new TreeSet<Integer>();
 		int check = 0;
+		
+		//check whether the query have whitespace(" ") or not, if yes
+		//then, split the whitespace(" ") and check the split query whether it contains in the terms or not
+		//if yes, then add its postinglist to the pos List
 		if(query.contains(" "))
 		{
 			String newTerm[];
 			newTerm = query.split(" ");
-			
+		 
 			for(int i = 0 ; i < newTerm.length ; i++)
 			{
 				for(String term : termDict.keySet()) 
 				{
-					  if(newTerm[i].equals(term))
-					  {
-						  PostingList p = readPosting(g,termDict.get(term));
-						  pos.add(p);
-						  check++;
-					  }
+					if(newTerm[i].equals(term))
+					{
+						PostingList p = readPosting(g,termDict.get(term));
+						pos.add(p);
+						check++;
+					}
 				}
 			}
 			if(check != newTerm.length)
 			{
 				return null;
 			}
+			
+			//if pos List have more than 1 postinglist(the query contains whitespace(" "))
+			//intersect its postinglists and add into pos List
 			while(pos.size() > 1)
 			{
 				int i = 0;
@@ -167,7 +179,6 @@ public class Query {
 			for(int i = 0; i<pos.get(0).getList().size() ; i++)
 			{
 				listDocID.add(pos.get(0).getList().get(i));
-				
 			}
 		}
 		else
@@ -177,7 +188,7 @@ public class Query {
 				if(query.equals(term))
 				{
 					PostingList p = readPosting(g,termDict.get(term));
-					for(int i = 0 ; i < p.getList().size() ; i++)
+					for(int i = 0 ; i < p.getList().size()   ; i++)
 					{
 						listDocID.add(p.getList().get(i));
 						check = 1;
@@ -191,7 +202,8 @@ public class Query {
 		}
 		
 		
-		return listDocID;
+		List<Integer> resList = new ArrayList<>(listDocID);
+		return resList;
 		
 	}
 	
@@ -216,6 +228,9 @@ public class Query {
     	if(res != null) 
     	{
     		StringBuilder out = new StringBuilder();
+    		/**
+    		 * Get the result by getting from docDict
+    		 */
     		for(int i = 0 ; i < res.size() ; i++)
     		{
 				if(i == res.size()-1)
@@ -235,6 +250,12 @@ public class Query {
     	}
     }
     
+    /**
+     * this method is used to intersect 2 PostingLists
+     * @param p1
+     * @param p2
+     * @return
+     */
     private PostingList intersect(PostingList p1, PostingList p2)
     {
     	PostingList newP;
@@ -248,7 +269,7 @@ public class Query {
     		{
     			break;
     		}
-			
+			// When p1's and p2's docId are the same, add it to docList
 	    	if(p1.getList().get(i).equals(p2.getList().get(j)))
 	    	{
 	    		docList.add(p1.getList().get(i));
